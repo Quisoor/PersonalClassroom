@@ -1,0 +1,148 @@
+﻿@page "/payments"
+@inject PcContext dbContext
+@inject PaymentFormValidator validator
+
+<DxFormLayout>
+    <DxFormLayoutItem Caption="Date:" ColSpanMd="6">
+        <Template>
+            <DxDateEdit Format="dd/MM/yyyy" @bind-Date="@model.Date"></DxDateEdit>
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem Caption="Montant:" ColSpanMd="6">
+        <Template>
+            <DxSpinEdit @bind-Value="@model.Price"></DxSpinEdit>
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem Caption="Pour:" ColSpanMd="6">
+        <Template>
+            <DxTagBox Data="@students"
+                      TextFieldName="@nameof(Student.Label)"
+                      @bind-SelectedItems="@selectedStudents">
+            </DxTagBox>
+        </Template>
+    </DxFormLayoutItem>
+</DxFormLayout>
+
+<DxButton RenderStyle="@ButtonRenderStyle.Primary" RenderStyleMode="@ButtonRenderStyleMode.Contained" Text="Ajouter" Click="@OnClick" />
+
+<DxDataGrid Data="@data"
+            T="@Payment"
+            PageSize="10"
+            ShowFilterRow="false"
+            RowRemovingAsync="@OnRowRemoving"
+            style="width:100%">
+    <DxDataGridCommandColumn Width="150px" EditButtonVisible="@false" NewButtonVisible="@false" />
+    <DxDataGridColumn Field="@nameof(Payment.Date)" Caption="Date">
+        <DisplayTemplate>@((context as Payment).Date.ToString("dd/MM/yyyy"))</DisplayTemplate>
+    </DxDataGridColumn>
+    <DxDataGridColumn Field="@nameof(Payment.Price)" Caption="Prix">
+        <DisplayTemplate>
+            <span>@((context as Payment).Price) €</span>
+        </DisplayTemplate>
+    </DxDataGridColumn>
+    <DxDataGridColumn Field="@nameof(Payment.StudentPayments)" Caption="Par">
+        <DisplayTemplate>
+            @{
+                var payment = context as Payment;
+                var names = payment.StudentPayments
+                    .Select(x => x.Student)
+                    .Distinct()
+                    .Select(x => x.Label)
+                    .ToList();
+                <span>@string.Join('/', names)</span>
+            }
+        </DisplayTemplate>
+    </DxDataGridColumn>
+</DxDataGrid>
+
+<DxPopup HeaderText="Erreurs"
+         @bind-Visible="@isErrorVisible"
+         CloseButtonClick="@OnClose">
+    <Content>
+        <p>
+            <ul>
+                @foreach (var error in errors)
+                {
+                    <li>@error.ErrorMessage</li>
+                }
+            </ul>
+        </p>
+    </Content>
+</DxPopup>
+
+@code{
+    private List<Payment> data = new List<Payment>();
+    private PaymentForm model = new PaymentForm();
+    private IEnumerable<Student> students = new List<Student>();
+    private IEnumerable<Student> selectedStudents = new List<Student>();
+    bool isErrorVisible;
+    List<ValidationFailure> errors = new List<ValidationFailure>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        data = await dbContext.Payments
+            .Include(x => x.StudentPayments)
+            .ThenInclude(x => x.Student)
+            .OrderBy(x => x.Date)
+            .ToListAsync();
+        students = await dbContext.Students.ToListAsync();
+    }
+
+    async Task OnRowRemoving(Payment dataItem)
+    {
+        data.Remove(dataItem);
+        dbContext.Payments.Remove(dataItem);
+        await dbContext.SaveChangesAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    void OnClick(MouseEventArgs e)
+    {
+        model.StudentIds = selectedStudents.Select(x => x.Id).ToList();
+        if (Validate())
+        {
+            var payment = new Payment();
+            payment.Date = model.Date.Value;
+            payment.Price = model.Price.Value;
+            payment.LeftToUse = model.Price.Value;
+            payment.StudentPayments = model.StudentIds.Select(x => new StudentPayment { StudentId = x }).ToList();
+            dbContext.Payments.Add(payment);
+            var classesToPay = dbContext.Classes
+                .OrderBy(x => x.Start)
+                .ToList()
+                .Where(x => x.IsPayed == false)
+                .Where(x => payment.StudentPayments.Any(y => y.StudentId == x.StudentId))
+                .ToList();
+            var i = 0;
+            while (payment.LeftToUse > 0 && i < classesToPay.Count)
+            {
+                var classItem = classesToPay[i];
+                var diff = payment.LeftToUse >= classItem.LeftToPay ? classItem.LeftToPay : payment.LeftToUse - classItem.LeftToPay;
+                classItem.LeftToPay -= Math.Abs(diff);
+                payment.LeftToUse -= Math.Abs(diff);
+                i++;
+            }
+            dbContext.SaveChanges();
+            data = dbContext.Payments
+                .Include(x => x.StudentPayments)
+                .ThenInclude(x => x.Student)
+                .OrderBy(x => x.Date)
+                .ToList();
+        }
+        StateHasChanged();
+    }
+
+    void OnClose()
+    {
+        errors = new List<ValidationFailure>();
+        isErrorVisible = false;
+    }
+
+    bool Validate()
+    {
+        var result = validator.Validate(model);
+        errors = result.Errors.ToList();
+        isErrorVisible = !result.IsValid;
+        return result.IsValid;
+    }
+}

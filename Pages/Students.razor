@@ -1,0 +1,75 @@
+﻿@page "/students"
+@inject PcContext dbContext
+
+<DxDataGrid Data="@data"
+            T="@Student"
+            PageSize="5"
+            ShowFilterRow="false"
+            RowRemovingAsync="@OnRowRemoving"
+            RowUpdatingAsync="@OnRowUpdating"
+            RowInsertingAsync="@OnRowInserting"
+            style="width:100%">
+    <DxDataGridCommandColumn Width="150px" />
+    <DxDataGridColumn Field="@nameof(Student.Firstname)" Caption="Prénom" />
+    <DxDataGridColumn Field="@nameof(Student.Lastname)" Caption="Nom" />
+    <DxDataGridComboBoxColumn Field="@nameof(Student.LevelId)" Caption="Niveau" T="@Level" Data="@levels" TextAlignment="@DataGridTextAlign.Left" Width="150px"
+                              TextFieldName="@nameof(Level.Symbol)" ValueFieldName="@nameof(Level.Id)" />
+</DxDataGrid>
+<DxButton Click="@OnSave" Text="Sauvegarder" Enabled="@isModified" />
+
+@code{
+    private List<Student> data = new List<Student>();
+    private List<Level> levels = new List<Level>();
+    private bool isModified;
+
+    protected override async Task OnInitializedAsync()
+    {
+        data = await dbContext.Students.ToListAsync();
+        levels = await dbContext.Levels.ToListAsync();
+    }
+
+    async Task OnRowRemoving(Student dataItem)
+    {
+        data.Remove(dataItem);
+        dbContext.Students.Remove(dataItem);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async Task OnRowUpdating(Student dataItem, IDictionary<string, object> newValue)
+    {
+        foreach (var field in newValue.Keys)
+        {
+            switch (field)
+            {
+                case nameof(Student.Firstname):
+                    dataItem.Firstname = (string)newValue[field];
+                    break;
+                case nameof(Student.Lastname):
+                    dataItem.Lastname = (string)newValue[field];
+                    break;
+                case nameof(Student.LevelId):
+                    dataItem.LevelId = (newValue[field] as Level).Id;
+                    break;
+            }
+        }
+        isModified = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async Task OnRowInserting(IDictionary<string, object> newValue)
+    {
+        var student = new Student();
+        await OnRowUpdating(student, newValue);
+        data.Add(student);
+        await dbContext.AddAsync(student);
+        isModified = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    void OnSave(MouseEventArgs e)
+    {
+        dbContext.SaveChanges();
+        isModified = false;
+        StateHasChanged();
+    }
+}

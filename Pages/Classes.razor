@@ -1,0 +1,219 @@
+﻿@page "/classes"
+
+@using DevExpress.Blazor.Calendar.Internal
+
+@inject PcContext dbContext
+@inject ClassFormValidator validator
+
+<DxFormLayout>
+    <DxFormLayoutItem Caption="Description:" ColSpanMd="6">
+        <Template>
+            <DxTextBox @bind-Text="@(model.Description)"></DxTextBox>
+        </Template>
+    </DxFormLayoutItem>
+
+    <DxFormLayoutItem Caption="Elève:" ColSpanMd="6">
+        <Template>
+            <DxComboBox Data="@students"
+                        T="@Student"
+                        TextFieldName="@nameof(Student.Label)"
+                        SelectedItemChanged="@OnStudentChange">
+            </DxComboBox>
+        </Template>
+    </DxFormLayoutItem>
+
+    <DxFormLayoutItem Caption="Date de début:" ColSpanMd="6" BeginRow="true">
+        <Template>
+            <DxDateEdit Format="dd/MM/yyyy" @bind-Date="@(model.StartDate)"></DxDateEdit>
+        </Template>
+    </DxFormLayoutItem>
+
+    <DxFormLayoutItem Caption="Date de fin:" ColSpanMd="6">
+        <Template>
+            <DxDateEdit Format="dd/MM/yyyy" @bind-Date="@(model.EndDate)"></DxDateEdit>
+        </Template>
+    </DxFormLayoutItem>
+
+    <DxFormLayoutItem Caption="Heure du cours:" ColSpanMd="4">
+        <Template>
+            <DxTextBox @bind-Text="@(model.StartHour)"></DxTextBox>
+        </Template>
+    </DxFormLayoutItem>
+
+    <DxFormLayoutItem Caption="Durée:" ColSpanMd="4">
+        <Template>
+            <DxTextBox @bind-Text="@(model.Duration)"></DxTextBox>
+        </Template>
+    </DxFormLayoutItem>
+
+    <DxFormLayoutItem Caption="Prix:" ColSpanMd="4">
+        <Template>
+            <DxSpinEdit @bind-Value="@(model.Price)"></DxSpinEdit>
+        </Template>
+    </DxFormLayoutItem>
+
+    <DxFormLayoutItem Caption="Jour(s) de cours:" ColSpanMd="4">
+        <Template>
+            <DxListBox Data="@days"
+                       TextFieldName="@nameof(Day.Label)"
+                       SelectionMode="@ListBoxSelectionMode.Multiple"
+                       ShowCheckboxes="@true"
+                       @bind-SelectedItems="@(model.Days)">
+            </DxListBox>
+        </Template>
+    </DxFormLayoutItem>
+
+</DxFormLayout>
+<DxButton Text="Ajouter" Click="@(async (e) => await OnClick(e))" />
+<DxPopup HeaderText="Erreurs"
+         @bind-Visible="@isErrorVisible"
+         CloseButtonClick="@OnClose">
+    <Content>
+        <p>
+            <ul>
+                @foreach (var error in errors)
+                {
+                    <li>@error.ErrorMessage</li>
+                }
+            </ul>
+        </p>
+    </Content>
+</DxPopup>
+<DxDataGrid Data="@data"
+            T="@Class"
+            PageSize="20" 
+            ShowFilterRow="false"
+            style="width:100%"
+            HtmlRowDecoration="@OnHtmlRowDecoration">
+    <DxDataGridColumn Field="@nameof(Class.Start)" Caption="Date">
+        <DisplayTemplate>@((context as Class).Start.ToString("dd/MM/yyyy"))</DisplayTemplate>
+    </DxDataGridColumn>
+    <DxDataGridColumn Field="@nameof(Class.Duration)" Caption="Durée" />
+    <DxDataGridComboBoxColumn Field="@nameof(Class.StudentId)" Caption="Elève" T="@Student" Data="@students" TextAlignment="@DataGridTextAlign.Left" Width="150px"
+                              TextFieldName="@nameof(Student.Label)" ValueFieldName="@nameof(Student.Id)" />
+    <DxDataGridColumn Field="@nameof(Class.Price)" Caption="Prix" />
+    <DxDataGridColumn Field="@nameof(Class.LeftToPay)" Caption="Restant dû" />
+    <DxDataGridColumn Caption="Supprimer">
+        <DisplayTemplate>
+            <DxButton RenderStyle="ButtonRenderStyle.Danger" Text="Supprimer" IconCssClass="remove" IconPosition="ButtonIconPosition.AfterText" Click="@(async (e) => await OnRowRemoving(context as Class))" />
+        </DisplayTemplate>
+    </DxDataGridColumn>
+</DxDataGrid>
+<DxPopup HeaderText="Information"
+         @bind-Visible="@isInfoVisible">
+    <Content>
+        <p>
+            Un cours déjà payé ne peut être supprimé.
+        </p>
+    </Content>
+</DxPopup>
+
+@code {
+    private List<Class> data = new List<Class>();
+    private List<Student> students = new List<Student>();
+    private bool isInfoVisible;
+
+    protected override async Task OnInitializedAsync()
+    {
+        data = await dbContext.Classes.OrderBy(x => x.Start).ToListAsync();
+        students = await dbContext.Students.ToListAsync();
+        days = Day.GetAlls();
+    }
+
+    void OnHtmlRowDecoration(DataGridHtmlRowDecorationEventArgs<Class> eventArgs)
+    {
+        if (eventArgs.DataItem.IsPayed)
+        {
+            eventArgs.Style += " background-color: rgb(105, 238, 114);";
+        }
+        if (eventArgs.DataItem.LeftToPay < eventArgs.DataItem.Price && !eventArgs.DataItem.IsPayed)
+        {
+            eventArgs.Style += " background-color: rgb(227, 238, 114);";
+        }
+    }
+
+    async Task OnRowRemoving(Class dataItem)
+    {
+        if (!dataItem.IsPayed)
+        {
+            var entity = dbContext.Classes.Single(x => x.Id == dataItem.Id);
+            dbContext.Classes.Remove(entity);
+            await dbContext.SaveChangesAsync();
+            data = await dbContext.Classes.ToListAsync();
+        }
+        else
+        {
+            isInfoVisible = true;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    ClassForm model = new ClassForm();
+    IEnumerable<Day> days = new List<Day>();
+    List<ValidationFailure> errors = new List<ValidationFailure>();
+    bool isErrorVisible;
+
+    async Task OnClick(MouseEventArgs e)
+    {
+        if (Validate())
+        {
+            var entitiesToAdd = new List<Class>();
+            var paymentsToUse = dbContext.Payments
+                .Include(x => x.StudentPayments)
+                .ToList()
+                .Where(x => x.LeftToUse > 0)
+                .Where(x => x.StudentPayments.Any(x => x.StudentId == model.StudentId))
+                .ToList();
+            for (var date = model.StartDate.Value; date <= model.EndDate.Value; date = date.AddDays(1))
+            {
+                if (model.Days.Any(y => y.Number == date.DayOfWeek))
+                {
+                    var start = date;
+                    var startHour = TimeSpan.Parse(model.StartHour);
+                    start = start.AddTicks(startHour.Ticks);
+                    var classItem = new Class
+                    {
+                        Description = model.Description,
+                        Duration = TimeSpan.Parse(model.Duration),
+                        Price = model.Price.Value,
+                        LeftToPay = model.Price.Value,
+                        Start = start,
+                        StudentId = model.StudentId.Value
+                    };
+                    while(paymentsToUse.Any(x => x.LeftToUse > 0) && !classItem.IsPayed)
+                    {
+                        var payment = paymentsToUse.First();
+                        var diff = Math.Abs(payment.LeftToUse >= classItem.LeftToPay ? classItem.LeftToPay : payment.LeftToUse - classItem.LeftToPay);
+                        payment.LeftToUse -= diff;
+                        classItem.LeftToPay -= diff;
+                    }
+                    entitiesToAdd.Add(classItem);
+                }
+            }
+            await dbContext.AddRangeAsync(entitiesToAdd);
+            await dbContext.SaveChangesAsync();
+            data = await dbContext.Classes.OrderBy(x => x.Start).ToListAsync();
+            model = new ClassForm();
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    void OnClose()
+    {
+        errors = new List<ValidationFailure>();
+        isErrorVisible = false;
+    }
+
+    void OnStudentChange(Student selected)
+    {
+        model.StudentId = selected.Id;
+    }
+
+    bool Validate()
+    {
+        var result = validator.Validate(model);
+        errors = result.Errors.ToList();
+        isErrorVisible = !result.IsValid;
+        return result.IsValid;
+    }
+}

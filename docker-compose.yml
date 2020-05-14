@@ -1,0 +1,19 @@
+version: '3.4'
+
+services:
+  personalclassroom:
+    image: ${DOCKER_REGISTRY-}personalclassroom
+    depends_on:
+      - "db"
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+  db:
+    image: postgres:latest
+    ports:
+      - "5432"
+    environment:
+      POSTGRES_USER: "pc"
+      POSTGRES_PASSWORD: "pc"
+      POSTGRES_DB: "personal_classrooom"
