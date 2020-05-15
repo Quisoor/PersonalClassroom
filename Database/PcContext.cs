@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PersonalClassroom.Database.Entities;
+using System;
 
 namespace PersonalClassroom.Database
 {
@@ -16,8 +17,11 @@ namespace PersonalClassroom.Database
 
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {            
-            optionsBuilder.UseNpgsql("Username=pc;Password=pc;Server=db;Database=personal_classroom");
+        {
+            var user = Environment.GetEnvironmentVariable("db_user");
+            var pwd = Environment.GetEnvironmentVariable("db_pwd");
+            var server = Environment.GetEnvironmentVariable("db_server");
+            optionsBuilder.UseNpgsql($"Username={user};Password={pwd};Server={server};Database=personal_classroom");
             base.OnConfiguring(optionsBuilder);
         }
 
