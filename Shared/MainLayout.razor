@@ -1,12 +1,12 @@
 ﻿@inherits LayoutComponentBase
-
+@inject Microsoft.Extensions.Configuration.IConfiguration configuration
 <div class="sidebar">
     <NavMenu />
 </div>
 
 <div class="main">
     <div class="top-row px-4">
-        <a href="https://docs.microsoft.com/aspnet/" target="_blank">About</a>
+        Version: @configuration.GetSection("Version").Value
     </div>
 
     <div class="content px-4">

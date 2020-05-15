@@ -5,6 +5,10 @@ services:
     image: ${DOCKER_REGISTRY-}personalclassroom
     depends_on:
       - "db"
+    environment:
+      db_user: "personal"
+      db_pwd: "personal"
+      db_server: "db"
     build:
       context: .
       dockerfile: Dockerfile
@@ -14,6 +18,6 @@ services:
     ports:
       - "5432"
     environment:
-      POSTGRES_USER: "pc"
-      POSTGRES_PASSWORD: "pc"
+      POSTGRES_USER: "personal"
+      POSTGRES_PASSWORD: "personal"
       POSTGRES_DB: "personal_classrooom"
