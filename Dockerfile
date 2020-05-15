@@ -8,10 +8,12 @@ EXPOSE 443
 FROM mcr.microsoft.com/dotnet/core/sdk:3.1-buster AS build
 WORKDIR /src
 COPY ["PersonalClassroom.csproj", ""]
-RUN dotnet restore "./PersonalClassroom.csproj"
+RUN dotnet restore "./PersonalClassroom.csproj" --configfile "./NuGet.config"
 COPY . .
 WORKDIR "/src/."
 RUN dotnet build "PersonalClassroom.csproj" -c Release -o /app/build
+RUN dotnet test --logger trx
+
 
 FROM build AS publish
 RUN dotnet publish "PersonalClassroom.csproj" -c Release -o /app/publish
