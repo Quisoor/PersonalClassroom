@@ -1,0 +1,61 @@
+﻿@page "/students"
+@inject StudentGridService service
+@inject LevelService levelService
+
+<DxDataGrid DataAsync="@service.GetAsync"
+            T="@StudentGridModel"
+            PageSize="5"
+            ShowFilterRow="false"
+            RowRemovingAsync="@OnRowRemoving"
+            RowUpdatingAsync="@OnRowUpdating"
+            RowInsertingAsync="@OnRowInserting"
+            style="width:100%">
+    <DxDataGridCommandColumn Width="150px" />
+    <DxDataGridColumn Field="@nameof(StudentGridModel.Firstname)" Caption="Prénom" />
+    <DxDataGridColumn Field="@nameof(StudentGridModel.Lastname)" Caption="Nom" />
+    <DxDataGridComboBoxColumn Field="@nameof(StudentGridModel.LevelId)" Caption="Niveau" T="@ShortModel" 
+                              DataAsync="@levelService.GetAsync" TextAlignment="@DataGridTextAlign.Left"
+                              TextFieldName="@nameof(ShortModel.Label)" ValueFieldName="@nameof(ShortModel.Id)" />
+</DxDataGrid>
+
+@code{
+    async Task OnRowRemoving(StudentGridModel dataItem)
+    {
+        await service.DeleteAsync(dataItem);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async Task OnRowUpdating(StudentGridModel dataItem, IDictionary<string, object> newValue)
+    {
+        ApplyNewValues(dataItem, newValue);
+        await service.UpdateAsync(dataItem);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async Task OnRowInserting(IDictionary<string, object> newValue)
+    {
+        var student = new StudentGridModel();
+        ApplyNewValues(student, newValue);
+        await service.InsertAsync(student);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ApplyNewValues(StudentGridModel dataItem, IDictionary<string, object> newValue)
+    {
+        foreach (var field in newValue.Keys)
+        {
+            switch (field)
+            {
+                case nameof(StudentGridModel.Firstname):
+                    dataItem.Firstname = (string)newValue[field];
+                    break;
+                case nameof(StudentGridModel.Lastname):
+                    dataItem.Lastname = (string)newValue[field];
+                    break;
+                case nameof(StudentGridModel.LevelId):
+                    dataItem.LevelId = (newValue[field] as ShortModel).Id;
+                    break;
+            }
+        }
+    }
+}

@@ -1,0 +1,24 @@
+version: '3.4'
+
+services:
+  personalclassroom.web:
+    image: ${DOCKER_REGISTRY-}personalclassroomweb
+    depends_on:
+      - "db"
+    environment:
+      db_user: "admin"
+      db_pwd: "admin"
+      db_server: "db"
+    build:
+      context: .
+      dockerfile: PersonalClassroom.Web/Dockerfile
+
+  db:
+    image: postgres:latest
+    ports:
+      - "5432"
+    environment:
+      POSTGRES_USER: "admin"
+      POSTGRES_PASSWORD: "admin"
+      POSTGRES_DB: "personal_classrooom"
+

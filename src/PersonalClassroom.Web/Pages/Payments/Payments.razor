@@ -1,0 +1,93 @@
+﻿@page "/payments"
+@inject PaymentGridService gridService
+@inject PaymentFormService formService
+@inject StudentService studentService
+
+<DxFormLayout>
+    <DxFormLayoutItem Caption="Date:" ColSpanMd="6">
+        <Template>
+            <DxDateEdit Format="dd/MM/yyyy" @bind-Date="@model.Date"></DxDateEdit>
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem Caption="Montant:" ColSpanMd="6">
+        <Template>
+            <DxSpinEdit @bind-Value="@model.Price"></DxSpinEdit>
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem Caption="Pour:" ColSpanMd="6">
+        <Template>
+            <DxTagBox DataAsync="@studentService.GetAsync"
+                      T="@ShortModel"
+                      TextFieldName="@nameof(ShortModel.Label)"
+                      @bind-SelectedItems="@selectedStudents">
+            </DxTagBox>
+        </Template>
+    </DxFormLayoutItem>
+</DxFormLayout>
+
+<DxButton RenderStyle="@ButtonRenderStyle.Primary" RenderStyleMode="@ButtonRenderStyleMode.Contained" Text="Ajouter" Click="@(async (e) => await OnClick(e))" />
+
+<DxDataGrid DataAsync="@gridService.GetAsync"
+            T="@PaymentGridModel"
+            PageSize="10"
+            ShowFilterRow="false"
+            RowRemovingAsync="@OnRowRemoving"
+            style="width:100%">
+    <DxDataGridCommandColumn Width="150px" EditButtonVisible="@false" NewButtonVisible="@false" />
+    <DxDataGridColumn Field="@nameof(PaymentGridModel.Date)" Caption="Date" />
+    <DxDataGridColumn Field="@nameof(PaymentGridModel.Price)" Caption="Prix">
+        <DisplayTemplate>
+            <span>@((context as PaymentGridModel).Price) €</span>
+        </DisplayTemplate>
+    </DxDataGridColumn>
+    <DxDataGridColumn Field="@nameof(PaymentGridModel.ForStudentIds)" Caption="Par">
+        <DisplayTemplate>
+            @{
+                var payment = context as PaymentGridModel;
+                var names = studentService.Get(payment.ForStudentIds.Select(x => x.Value)).Select(x => x.Label);
+                <span>@string.Join('/', names)</span>
+            }
+        </DisplayTemplate>
+    </DxDataGridColumn>
+</DxDataGrid>
+
+<DxPopup HeaderText="Erreurs"
+         @bind-Visible="@isErrorVisible"
+         CloseButtonClick="@OnClose">
+    <Content>
+        <p>
+            <ul>
+                @foreach (var error in errors)
+                {
+                    <li>@error.ErrorMessage</li>
+                }
+            </ul>
+        </p>
+    </Content>
+</DxPopup>
+
+@code{
+    private PaymentFormModel model = new PaymentFormModel();
+    private IEnumerable<ShortModel> selectedStudents = new List<ShortModel>();
+    bool isErrorVisible;
+    IList<ValidationFailure> errors = new List<ValidationFailure>();
+
+    async Task OnRowRemoving(PaymentGridModel dataItem)
+    {
+        await gridService.DeleteAsync(dataItem);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async Task OnClick(MouseEventArgs e)
+    {
+        model.StudentIds = selectedStudents.Select(x => x.Id.Value).ToList();
+        errors = await formService.InsertAsync(model);
+        StateHasChanged();
+    }
+
+    void OnClose()
+    {
+        errors = new List<ValidationFailure>();
+        isErrorVisible = false;
+    }
+}
