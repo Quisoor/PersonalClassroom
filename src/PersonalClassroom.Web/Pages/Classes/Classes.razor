@@ -1,0 +1,151 @@
+﻿@page "/classes"
+
+@inject ClassGridService gridService
+@inject ClassFormService formService
+@inject StudentService studentService
+
+<DxFormLayout>
+    <DxFormLayoutItem Caption="Description:" ColSpanMd="6">
+        <Template>
+            <DxTextBox @bind-Text="@(model.Description)"></DxTextBox>
+        </Template>
+    </DxFormLayoutItem>
+
+    <DxFormLayoutItem Caption="Elève:" ColSpanMd="6">
+        <Template>
+            <DxComboBox DataAsync="@studentService.GetAsync"
+                        T="@ShortModel"
+                        TextFieldName="@nameof(ShortModel.Label)"
+                        SelectedItemChanged="@OnStudentChange">
+            </DxComboBox>
+        </Template>
+    </DxFormLayoutItem>
+
+    <DxFormLayoutItem Caption="Date de début:" ColSpanMd="6" BeginRow="true">
+        <Template>
+            <DxDateEdit Format="dd/MM/yyyy" @bind-Date="@(model.StartDate)"></DxDateEdit>
+        </Template>
+    </DxFormLayoutItem>
+
+    <DxFormLayoutItem Caption="Date de fin:" ColSpanMd="6">
+        <Template>
+            <DxDateEdit Format="dd/MM/yyyy" @bind-Date="@(model.EndDate)"></DxDateEdit>
+        </Template>
+    </DxFormLayoutItem>
+
+    <DxFormLayoutItem Caption="Heure du cours:" ColSpanMd="4">
+        <Template>
+            <DxTextBox @bind-Text="@(model.StartHour)"></DxTextBox>
+        </Template>
+    </DxFormLayoutItem>
+
+    <DxFormLayoutItem Caption="Durée:" ColSpanMd="4">
+        <Template>
+            <DxTextBox @bind-Text="@(model.Duration)"></DxTextBox>
+        </Template>
+    </DxFormLayoutItem>
+
+    <DxFormLayoutItem Caption="Prix:" ColSpanMd="4">
+        <Template>
+            <DxSpinEdit @bind-Value="@(model.Price)"></DxSpinEdit>
+        </Template>
+    </DxFormLayoutItem>
+
+    <DxFormLayoutItem Caption="Jour(s) de cours:" ColSpanMd="4">
+        <Template>
+            <DxListBox Data="@days"
+                       TextFieldName="@nameof(Day.Label)"
+                       SelectionMode="@ListBoxSelectionMode.Multiple"
+                       ShowCheckboxes="@true"
+                       @bind-SelectedItems="@(model.Days)">
+            </DxListBox>
+        </Template>
+    </DxFormLayoutItem>
+
+</DxFormLayout>
+<DxButton Text="Ajouter" Click="@(async (e) => await OnClick(e))" />
+<DxPopup HeaderText="Erreurs"
+         @bind-Visible="@isErrorVisible"
+         CloseButtonClick="@OnClose">
+    <Content>
+        <p>
+            <ul>
+                @foreach (var error in errors)
+                {
+                    <li>@error.ErrorMessage</li>
+                }
+            </ul>
+        </p>
+    </Content>
+</DxPopup>
+<DxDataGrid DataAsync="@gridService.GetAsync"
+            T="@ClassGridModel"
+            PageSize="20" 
+            ShowFilterRow="false"
+            style="width:100%"
+            HtmlRowDecoration="@OnHtmlRowDecoration">
+    <DxDataGridColumn Field="@nameof(ClassGridModel.Date)" Caption="Date" />
+    <DxDataGridColumn Field="@nameof(ClassGridModel.Duration)" Caption="Durée" />
+    <DxDataGridComboBoxColumn Field="@nameof(ClassGridModel.StudentId)" Caption="Elève" T="@ShortModel" 
+                              DataAsync="@studentService.GetAsync" TextAlignment="@DataGridTextAlign.Left"
+                              TextFieldName="@nameof(ShortModel.Label)" ValueFieldName="@nameof(ShortModel.Id)" />
+    <DxDataGridColumn Field="@nameof(ClassGridModel.Price)" Caption="Prix" />
+    <DxDataGridColumn Field="@nameof(ClassGridModel.LeftToPay)" Caption="Restant dû" />
+    <DxDataGridColumn Caption="Supprimer">
+        <DisplayTemplate>
+            <DxButton RenderStyle="ButtonRenderStyle.Danger" Text="Supprimer" IconCssClass="remove" IconPosition="ButtonIconPosition.AfterText" Click="@(async (e) => await OnRowRemoving(context as ClassGridModel))" />
+        </DisplayTemplate>
+    </DxDataGridColumn>
+</DxDataGrid>
+<DxPopup HeaderText="Information"
+         @bind-Visible="@isInfoVisible">
+    <Content>
+        <p>
+            Un cours déjà payé ne peut être supprimé.
+        </p>
+    </Content>
+</DxPopup>
+
+@code {
+    private bool isInfoVisible;
+
+    void OnHtmlRowDecoration(DataGridHtmlRowDecorationEventArgs<ClassGridModel> eventArgs)
+    {
+        if (eventArgs.DataItem.LeftToPay == 0)
+        {
+            eventArgs.Style += " background-color: rgb(105, 238, 114);";
+        }
+        if (eventArgs.DataItem.LeftToPay < eventArgs.DataItem.Price && eventArgs.DataItem.LeftToPay > 0)
+        {
+            eventArgs.Style += " background-color: rgb(227, 238, 114);";
+        }
+    }
+
+    async Task OnRowRemoving(ClassGridModel dataItem)
+    {
+        await gridService.DeleteAsync(dataItem);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    ClassFormModel model = new ClassFormModel();
+    IEnumerable<Day> days = new List<Day>();
+    List<ValidationFailure> errors = new List<ValidationFailure>();
+    bool isErrorVisible;
+
+    async Task OnClick(MouseEventArgs e)
+    {
+        await formService.InsertAsync(model);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    void OnClose()
+    {
+        errors = new List<ValidationFailure>();
+        isErrorVisible = false;
+    }
+
+    void OnStudentChange(ShortModel selected)
+    {
+        model.StudentId = selected.Id;
+    }
+}
