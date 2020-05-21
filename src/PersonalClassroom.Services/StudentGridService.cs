@@ -44,7 +44,7 @@ namespace PersonalClassroom.Services
             await context.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task<IList<ValidationFailure>> UpdateAsync(StudentGridModel model, CancellationToken cancellationToken = default)
+        public async Task UpdateAsync(StudentGridModel model, CancellationToken cancellationToken = default)
         {
             var result = await validator.ValidateUpdateAsync(model, cancellationToken);
             if (result.IsValid)
@@ -56,10 +56,9 @@ namespace PersonalClassroom.Services
                 mapper.Map(existingEntity, entity);
                 await context.SaveChangesAsync(cancellationToken);
             }
-            return result.Errors;
         }
 
-        public async Task<IList<ValidationFailure>> DeleteAsync(StudentGridModel model, CancellationToken cancellationToken = default)
+        public async Task DeleteAsync(StudentGridModel model, CancellationToken cancellationToken = default)
         {
             var result = await validator.ValidateDeleteAsync(model, cancellationToken);
             if (result.IsValid)
@@ -70,7 +69,6 @@ namespace PersonalClassroom.Services
                 context.Students.Remove(entity);
                 await context.SaveChangesAsync(cancellationToken);
             }
-            return result.Errors;
         }
     }
 }

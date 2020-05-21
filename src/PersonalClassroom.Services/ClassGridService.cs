@@ -16,12 +16,14 @@ namespace PersonalClassroom.Services
         private readonly PcContext context;
         private readonly ClassGridValidator validator;
         private readonly IMapper mapper;
+        private readonly ErrorService errorService;
 
         public ClassGridService(PcContext context, ClassGridValidator validator, IMapper mapper)
         {
             this.context = context;
             this.validator = validator;
             this.mapper = mapper;
+            this.errorService = errorService;
         }
 
         public IEnumerable<ClassGridModel> Get()
@@ -36,7 +38,7 @@ namespace PersonalClassroom.Services
             return await Task.Run(() => mapper.ProjectTo<ClassGridModel>(query), cancellationToken);
         }
 
-        public async Task<IList<ValidationFailure>> DeleteAsync(ClassGridModel model, CancellationToken cancellationToken = default)
+        public async Task DeleteAsync(ClassGridModel model, CancellationToken cancellationToken = default)
         {
             var result = await validator.ValidateDeleteAsync(model, cancellationToken);
             if (result.IsValid)
@@ -47,7 +49,6 @@ namespace PersonalClassroom.Services
                 context.Classes.Remove(entity);
                 await context.SaveChangesAsync(cancellationToken);
             }
-            return result.Errors;
         }
     }
 }

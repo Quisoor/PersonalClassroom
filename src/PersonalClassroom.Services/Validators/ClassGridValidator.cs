@@ -10,7 +10,7 @@ namespace PersonalClassroom.Services.Validators
     {
         private readonly PcContext context;
 
-        public ClassGridValidator(PcContext context)
+        public ClassGridValidator(PcContext context, ErrorService errorService) : base(errorService)
         {
             this.context = context;
         }

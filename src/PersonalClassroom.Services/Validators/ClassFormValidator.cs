@@ -8,6 +8,10 @@ namespace PersonalClassroom.Services.Validators
 {
     public class ClassFormValidator : BaseValidator<ClassFormModel>
     {
+        public ClassFormValidator(ErrorService errorService) : base(errorService)
+        {
+        }
+
         public override void OnInsert()
         {
             RuleFor(x => x.Days).Must(x => x.Any()).WithMessage("Veuillez sélectionner au moins un jour de la semaine.");

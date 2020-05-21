@@ -51,26 +51,9 @@
     </DxDataGridColumn>
 </DxDataGrid>
 
-<DxPopup HeaderText="Erreurs"
-         @bind-Visible="@isErrorVisible"
-         CloseButtonClick="@OnClose">
-    <Content>
-        <p>
-            <ul>
-                @foreach (var error in errors)
-                {
-                    <li>@error.ErrorMessage</li>
-                }
-            </ul>
-        </p>
-    </Content>
-</DxPopup>
-
 @code{
     private PaymentFormModel model = new PaymentFormModel();
     private IEnumerable<ShortModel> selectedStudents = new List<ShortModel>();
-    bool isErrorVisible;
-    IList<ValidationFailure> errors = new List<ValidationFailure>();
 
     async Task OnRowRemoving(PaymentGridModel dataItem)
     {
@@ -81,13 +64,7 @@
     async Task OnClick(MouseEventArgs e)
     {
         model.StudentIds = selectedStudents.Select(x => x.Id.Value).ToList();
-        errors = await formService.InsertAsync(model);
+        await formService.InsertAsync(model);
         StateHasChanged();
-    }
-
-    void OnClose()
-    {
-        errors = new List<ValidationFailure>();
-        isErrorVisible = false;
     }
 }

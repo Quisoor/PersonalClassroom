@@ -7,6 +7,10 @@ namespace PersonalClassroom.Services.Validators
 {
     public class PaymentFormValidator : BaseValidator<PaymentFormModel>
     {
+        public PaymentFormValidator(ErrorService errorService) : base(errorService)
+        {
+        }
+
         public override void OnInsert()
         {
             RuleFor(x => x.Date).NotNull();

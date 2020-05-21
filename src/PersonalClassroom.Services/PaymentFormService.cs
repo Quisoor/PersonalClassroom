@@ -22,7 +22,7 @@ namespace PersonalClassroom.Services
             this.validator = validator;
         }
 
-        public async Task<IList<ValidationFailure>> InsertAsync(PaymentFormModel model, CancellationToken cancellationToken = default)
+        public async Task InsertAsync(PaymentFormModel model, CancellationToken cancellationToken = default)
         {
             var result = await validator.ValidateInsertAsync(model);
             if (result.IsValid)
@@ -53,7 +53,6 @@ namespace PersonalClassroom.Services
                 await context.Payments.AddAsync(payment, cancellationToken);
                 await context.SaveChangesAsync(cancellationToken);
             }
-            return result.Errors;
         }
     }
 }
