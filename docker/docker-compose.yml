@@ -1,0 +1,26 @@
+version: '3.4'
+
+services:
+  web:
+    image: quisoor/personal-classroom:0.1.0
+    depends_on:
+      - "db"    
+    ports:
+      - "8080:80"
+    environment:
+      db_user: "admin"
+      db_pwd: "admin"
+      db_server: "db"
+      ASPNETCORE_ENVIRONMENT: "Production"
+      ASPNETCORE_URLS: "http://+:80"
+
+  db:
+    image: postgres:latest
+    ports:
+      - "5432"
+    environment:
+      POSTGRES_USER: "admin"
+      POSTGRES_PASSWORD: "admin"
+      POSTGRES_DB: "personal_classroom"
+    volumes:
+      - "/personal-classroom/data=/var/lib/postgresql/data/pgdata"
