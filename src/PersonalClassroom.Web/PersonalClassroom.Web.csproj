@@ -28,8 +28,4 @@
     <ProjectReference Include="..\PersonalClassroom.Services\PersonalClassroom.Services.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Components\" />
-  </ItemGroup>
-
 </Project>

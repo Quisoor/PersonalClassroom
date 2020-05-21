@@ -17,16 +17,14 @@ namespace PersonalClassroom.Services
     {
         private readonly PcContext context;
         private readonly ClassFormValidator validator;
-        private readonly IMapper mapper;
 
-        public ClassFormService(PcContext context, ClassFormValidator validator, IMapper mapper)
+        public ClassFormService(PcContext context, ClassFormValidator validator)
         {
             this.context = context;
             this.validator = validator;
-            this.mapper = mapper;
         }
 
-        public async Task<IList<ValidationFailure>> InsertAsync(ClassFormModel model, CancellationToken cancellationToken = default)
+        public async Task InsertAsync(ClassFormModel model, CancellationToken cancellationToken = default)
         {
             var result = await validator.ValidateInsertAsync(model, cancellationToken);
             if (result.IsValid)
@@ -67,7 +65,6 @@ namespace PersonalClassroom.Services
                 await context.AddRangeAsync(entitiesToAdd, cancellationToken);
                 await context.SaveChangesAsync(cancellationToken);
             }
-            return result.Errors;
         }
     }
 }

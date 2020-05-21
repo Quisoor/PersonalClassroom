@@ -1,0 +1,50 @@
+﻿@inject ErrorService service
+@implements IDisposable
+
+<DxPopup HeaderText="Erreurs"
+         @bind-Visible="@isVisible"
+         CloseButtonClick="@OnClose">
+    <Content>
+        <p>
+            <ul>
+                @foreach (var error in errors)
+                {
+                    <li>@error.ErrorMessage</li>
+                }
+            </ul>
+        </p>
+    </Content>
+</DxPopup>
+
+@code {
+    bool isVisible;
+    List<ValidationFailure> errors = new List<ValidationFailure>();
+
+    protected override void OnInitialized()
+    {
+        service.Notify += OnError;
+    }
+
+    async Task OnError(List<ValidationFailure> items)
+    {
+        await InvokeAsync(() =>
+        {
+            errors.AddRange(items);
+            isVisible = errors.Any();
+            StateHasChanged();
+        });
+    }
+
+    void OnClose()
+    {
+        isVisible = false;
+        errors.Clear();
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        service.Notify -= OnError;
+    }
+}
+

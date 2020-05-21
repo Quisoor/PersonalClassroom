@@ -24,6 +24,9 @@ namespace PersonalClassroom.Services.Extensions
             services.AddTransient<PaymentGridValidator>();
             services.AddTransient<StudentGridValidator>();
 
+            //notifiers
+            services.AddScoped<ErrorService>();
+
             //mapper
             services.AddAutoMapper(typeof(DependencyInjection));
         }

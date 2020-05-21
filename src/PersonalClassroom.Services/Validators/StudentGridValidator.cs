@@ -10,7 +10,7 @@ namespace PersonalClassroom.Services.Validators
     {
         private readonly PcContext context;
 
-        public StudentGridValidator(PcContext context)
+        public StudentGridValidator(PcContext context, ErrorService errorService) : base(errorService)
         {
             this.context = context;
             RuleFor(x => x.Firstname).NotNull().NotEmpty();
